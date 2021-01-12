@@ -3,15 +3,37 @@ json = require "json"
 function ExecFunction (string)
   local g = load("return ".. string);
   if g ~= nil then
-    ret=table.pack(pcall(g))
+    ret = table.pack(pcall(g))
     if ret[1] then
-      index=1
-      val={}
-      for k,v in pairs(ret) do
-        if index>1 then
-          val[index-1]=v
+      index = 1
+      val = {}
+      for k, v in pairs(ret) do
+        if index > 1 then
+          val[index - 1] = v
         end
-        index = index+1
+        index = index + 1
+      end
+
+      return val
+    else
+      print(string)
+      return "Error"
+    end
+  end
+end
+
+function ExecScript (string)
+  local g = load(string);
+  if g ~= nil then
+    ret = table.pack(pcall(g))
+    if ret[1] then
+      index = 1
+      val = {}
+      for k, v in pairs(ret) do
+        if index > 1 then
+          val[index - 1] = v
+        end
+        index = index + 1
       end
 
       return val
@@ -28,16 +50,27 @@ if ws then
   local closed = false
   while not closed do
     msg, closed = ws.receive()
-    ret = ExecFunction(msg);
-    if ret ~= nil then
-      if type(ret)=="function" then
-        ws.send(json.encode("{function returned}"))
+    if msg=="function" then
+      msg, closed = ws.receive()
+      ret = ExecFunction(msg);
+
+      if ret ~= nil then
+        if type(ret) == "function" then
+          ws.send(json.encode("{function returned}"))
+        else
+          ws.send(json.encode(ret));
+        end
       else
-        ws.send(json.encode(ret));
+        ws.send(json.encode({"nil"}))
       end
     else
-        ws.send(json.encode("{nil}"))
+      if msg=="script" then
+        msg, closed = ws.receive()
+        ExecScript(msg);
+      end
     end
+
+
   end
   ws.close()
 else
